@@ -9,36 +9,90 @@ import SwiftUI
 
 struct ContentView: View {
     
-    @State private var breeds: [DogBreed] = []
+    @State private var countries: [Country] = []
     
     var body: some View {
+        
         NavigationStack {
-            List(breeds) { breed in
-                NavigationLink(destination: BreedDetailView(breed: breed)) {
-                    Text(breed.name)
+            
+            List(countries) { country in
+                
+                NavigationLink(destination: CountryDetailView(country: country)) {
+                    
+                    HStack {
+                        
+                        AsyncImage(url: URL(string: country.flags.png)) { image in
+                            image
+                                .resizable()
+                                .frame(width: 40, height: 25)
+                                .cornerRadius(4)
+                        } placeholder: {
+                            ProgressView()
+                        }
+                        
+                        Text(country.name.common)
+                    }
                 }
             }
-            .navigationTitle("Dog Breeds")
-            .task {
-                await loadBreeds()
+            .navigationTitle("Countries")
+            .onAppear {
+                loadData()
             }
         }
     }
     
-    func loadBreeds() async {
-        do {
-            let url = URL(string: "https://dog.ceo/api/breeds/list/all")!
-            let (data, _) = try await URLSession.shared.data(from: url)
+    func loadData() {
+        
+        guard let url = URL(string: "https://restcountries.com/v3.1/all?fields=name,capital,flags") else { return }
+        
+        URLSession.shared.dataTask(with: url) { data, response, error in
             
-            let decoded = try JSONDecoder().decode(BreedListResponse.self, from: data)
+            guard let data = data else { return }
             
-            breeds = decoded.message.keys
-                .map { DogBreed(name: $0.capitalized) }
-                .sorted { $0.name < $1.name }
+            do {
+                let decoded = try JSONDecoder().decode([Country].self, from: data)
+                
+                DispatchQueue.main.async {
+                    countries = decoded.sorted { $0.name.common < $1.name.common }
+                }
+                
+            } catch {
+                print(error)
+            }
             
-        } catch {
-            print(error)
+        }.resume()
+    }
+}
+
+struct CountryDetailView: View {
+    
+    let country: Country
+    
+    var body: some View {
+        
+        VStack(spacing: 20) {
+            
+            Text(country.name.common)
+                .font(.largeTitle)
+                .bold()
+            
+            if let capital = country.capital?.first {
+                Text("Capital: \(capital)")
+                    .font(.title2)
+            } else {
+                Text("Capital: Unknown")
+            }
+            
+            AsyncImage(url: URL(string: country.flags.png)) { image in
+                image
+                    .resizable()
+                    .scaledToFit()
+                    .frame(height: 150)
+            } placeholder: {
+                ProgressView()
+            }
         }
+        .padding()
     }
 }
 
@@ -46,75 +100,18 @@ struct ContentView: View {
     ContentView()
 }
 
-struct BreedDetailView: View {
+struct Country: Codable, Identifiable {
+    let name: Name
+    let capital: [String]?
+    let flags: Flag
     
-    let breed: DogBreed
-    
-    var body: some View {
-        VStack(alignment: .leading, spacing: 15) {
-            
-            Text(breed.name)
-                .font(.largeTitle)
-                .bold()
-            
-            if let facts = DogFacts.facts[breed.name] {
-                ForEach(facts, id: \.self) { fact in
-                    Text("• \(fact)")
-                }
-            } else {
-                Text("Facts for this breed are not available.")
-            }
-            
-            Spacer()
-        }
-        .padding()
-        .navigationTitle(breed.name)
-    }
+    var id: String { name.common }
 }
 
-struct DogBreed: Identifiable {
-    let id = UUID()
-    let name: String
+struct Name: Codable {
+    let common: String
 }
 
-struct BreedListResponse: Codable {
-    let message: [String: [String]]
-    let status: String
-}
-
-struct DogFacts {
-    
-    static let facts: [String: [String]] = [
-        
-        "Labrador": [
-            "Originally from Newfoundland, Canada.",
-            "One of the most popular family dogs.",
-            "Known for friendliness and intelligence."
-        ],
-        
-        "Poodle": [
-            "Originally bred in Germany.",
-            "Highly intelligent and easy to train.",
-            "Comes in standard, miniature, and toy sizes."
-        ],
-        
-        "Beagle": [
-            "Originally bred for hunting rabbits.",
-            "Known for a strong sense of smell.",
-            "Very social and energetic dogs."
-        ],
-        
-        "Bulldog": [
-            "Originated in England.",
-            "Known for their wrinkled face.",
-            "Typically calm and friendly companions."
-        ],
-        
-        "Husky": [
-            "Bred in Siberia as sled dogs.",
-            "Very energetic and athletic.",
-            "Known for their thick coat and blue eyes."
-        ]
-        
-    ]
+struct Flag: Codable {
+    let png: String
 }
