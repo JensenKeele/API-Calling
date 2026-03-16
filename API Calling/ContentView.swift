@@ -14,8 +14,7 @@ struct ContentView: View {
             List(countries) { country in
                 NavigationLink(destination: CountryDetailView(country: country)) {
                     HStack {
-                        AsyncImage(url: URL(string: country.flags.png)) { image in
-                            image
+                        AsyncImage(url: URL(string: country.flags.png)) { image in image //downloads image from the internet while not interfering with the app
                                 .resizable()
                                 .frame(width: 40, height: 25)
                                 .cornerRadius(4)
@@ -34,8 +33,8 @@ struct ContentView: View {
     }
     
     func loadData() {
-        guard let url = URL(string: "https://restcountries.com/v3.1/all?fields=name,capital,flags") else { return }
-        URLSession.shared.dataTask(with: url) { data, response, error in
+        guard let url = URL(string: "https://restcountries.com/v3.1/all?fields=name,capital,flags") else { return } //guard let lets an early exit in a function in case a value is nil
+        URLSession.shared.dataTask(with: url) { data, response, error in // how to get the picture from the internet
             guard let data = data else { return }
             do {
                 let decoded = try JSONDecoder().decode([Country].self, from: data)
@@ -45,7 +44,7 @@ struct ContentView: View {
             } catch {
                 print(error)
             }
-        }.resume()
+        }.resume() //calls to the internet and the other code is to handle the data when it arrives
     }
 }
 
@@ -56,7 +55,7 @@ struct CountryDetailView: View {
             Text(country.name.common)
                 .font(.largeTitle)
                 .bold()
-            if let capital = country.capital?.first {
+            if let capital = country.capital?.first { //checks to see if the data exists and if it does not then it doesnt run the code to prevent crashes
                 Text("Capital: \(capital)")
                     .font(.title2)
             } else {
