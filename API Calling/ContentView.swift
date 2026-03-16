@@ -9,6 +9,8 @@ import SwiftUI
 
 struct ContentView: View {
     @State private var countries: [Country] = []
+    @State private var searchText = ""
+    @State private var showAlert = false
     var body: some View {
         NavigationStack {
             List(countries) { country in
@@ -25,26 +27,26 @@ struct ContentView: View {
                     }
                 }
             }
+            .alert(isPresented: $showAlert, content: {
+                Alert(title: Text("Loading Error"), message: Text("There was a problem loading countries"))
+            })
             .navigationTitle("Countries")
-            .onAppear {
-                loadData()
+            .task {
+                await loadData()
             }
         }
     }
     
-    func loadData() {
-        guard let url = URL(string: "https://restcountries.com/v3.1/all?fields=name,capital,flags") else { return } //guard let lets an early exit in a function in case a value is nil
-        URLSession.shared.dataTask(with: url) { data, response, error in // how to get the picture from the internet
-            guard let data = data else { return }
-            do {
-                let decoded = try JSONDecoder().decode([Country].self, from: data)
-                DispatchQueue.main.async {
-                    countries = decoded.sorted { $0.name.common < $1.name.common }
+    func loadData() async {
+        if let url = URL(string: "https://restcountries.com/v3.1/all?fields=name,capital,flags") {
+            if let (data, _) = try? await URLSession.shared.data(from: url) {
+                if let decodedResponse = try? JSONDecoder().decode([Country].self, from: data) {
+                    countries = decodedResponse
+                    return
                 }
-            } catch {
-                print(error)
             }
-        }.resume() //calls to the internet and the other code is to handle the data when it arrives
+        }
+         showAlert = true
     }
 }
 
