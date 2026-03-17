@@ -11,17 +11,26 @@ struct ContentView: View {
     @State private var countries: [Country] = []
     @State private var searchText = ""
     @State private var showAlert = false
+    var filteredCountries: [Country] {
+        if searchText.isEmpty {
+            return countries
+        } else {
+            return countries.filter {
+                $0.name.common.lowercased().contains(searchText.lowercased()) //checks if what the person is typing matches a countries name or not regardless of case sensitve or not
+            }
+        }
+    }
     var body: some View {
         NavigationStack {
-            List(countries) { country in
+            List(filteredCountries) { country in
                 NavigationLink(destination: CountryDetailView(country: country)) {
                     HStack {
-                        AsyncImage(url: URL(string: country.flags.png)) { image in image //downloads image from the internet while not interfering with the app
+                        AsyncImage(url: URL(string: country.flags.png)) { image in image //downloads image from the internet while not interfering with the apps main process
                                 .resizable()
                                 .frame(width: 40, height: 25)
                                 .cornerRadius(4)
                         } placeholder: {
-                            ProgressView()
+                            ProgressView() //shows a spinning icon when a image is loading
                         }
                         Text(country.name.common)
                     }
@@ -35,8 +44,9 @@ struct ContentView: View {
                 await loadData()
             }
         }
+        .searchable(text: $searchText, prompt: "Search Countries") //adds the search feature
     }
-    
+
     func loadData() async {
         if let url = URL(string: "https://restcountries.com/v3.1/all?fields=name,capital,flags") {
             if let (data, _) = try? await URLSession.shared.data(from: url) {
@@ -84,7 +94,7 @@ struct Country: Codable, Identifiable {
     let name: Name
     let capital: [String]?
     let flags: Flag
-    var id: String { name.common }
+    var id: String {name.common} //the name part identifies the country by its name to tell things in the list apart
 }
 
 struct Name: Codable {
